@@ -1,0 +1,29 @@
+openssl s_client -debug -msg -state -status -showcerts -connect <host>:443
+-----
+openssl s_server -cert server-cert.pem -key server-key.pem -WWW -port 12345 -CAfile client-cert.pem -verify_return_error -Verify 1
+
+echo -e 'GET /test.txt HTTP/1.1\r\n\r\n' | openssl s_client -cert client-cert.pem -key client-key.pem -CAfile server-cert.pem -connect localhost:12345 -quiet
+
+curl -k --cert client-cert.pem --key client-key.pem https://localhost:12345/test.txt
+
+curl -k --cert client-cert.pem --key client-key.pem https://test.example.de:12345/test.txt
+->
+openssl s_client -cert client-cert.pem -key client-key.pem -CAfile ca-cert.pem -verify_return_error -connect test.example.de:443
+
+---
+static enum ssl_hs_wait_t do_verify_server_certificate(SSL_HANDSHAKE *hs)  : handshake_client.cc: 888
+ssl_verify_peer_cert : tls13_client.cc: 574
+
+enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) : handshake.cc:291
+    ret = ssl->ctx->x509_method->session_verify_cert_chain( : 354
+    
+->
+ grep -nr . -e 'session_verify_cert_chain'
+./ssl/ssl_x509.cc:362:static bool ssl_crypto_x509_session_verify_cert_chain(SSL_SESSION *session,
+./ssl/ssl_x509.cc:509:  ssl_crypto_x509_session_verify_cert_chain,
+./ssl/handshake.cc:354:    ret = ssl->ctx->x509_method->session_verify_cert_chain(
+./ssl/tls_method.cc:146:static bool ssl_noop_x509_session_verify_cert_chain(SSL_SESSION *session,
+./ssl/tls_method.cc:173:  ssl_noop_x509_session_verify_cert_chain,
+./ssl/internal.h:2188:  // session_verify_cert_chain verifies the certificate chain in |session|,
+./ssl/internal.h:2191:  bool (*session_verify_cert_chain)(SSL_SESSION *session, SSL_HANDSHAKE *ssl,
+
